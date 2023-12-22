@@ -471,8 +471,8 @@ pub async fn create_paged_embed<U, E>(
             _ => continue,
         };
 
-        let footer = format!("Page {}/{}", 1, num_pages);
-        let content = format!("```\n{}\n{}\n```", page_getter(0), &footer);
+        let footer = format!("Page {}/{}", *page_wlock + 1, num_pages);
+        let content = format!("```\n{}\n{}\n```", page_getter(*page_wlock), &footer);
         mci.create_response(
             ctx.http(),
             CreateInteractionResponse::UpdateMessage(
@@ -509,7 +509,7 @@ async fn help_all_commands<U, E>(
     let author = ctx.author().tag();
     let title = "Help".to_string();
     let content = menu.clone();
-    let page_size = 1024;
+    let page_size = 2000;
     create_paged_embed(ctx, author, title, content, page_size).await
 }
 
