@@ -1,7 +1,11 @@
 //! Contains the built-in help command and surrounding infrastructure
 
 use crate::{serenity_prelude as serenity, CreateReply};
+use std::cmp::min;
 use std::fmt::Write as _;
+use std::ops::Add;
+use std::sync::Arc;
+use std::time::Duration;
 
 /// Optional configuration for how the help message from [`help()`] looks
 pub struct HelpConfiguration<'a> {
@@ -347,17 +351,181 @@ async fn generate_all_commands<U, E>(
     Ok(menu)
 }
 
+/// Builds a single navigation button for the queue.
+fn build_single_nav_btn(label: &str, is_disabled: bool) -> CreateButton {
+    CreateButton::new(label.to_string().to_ascii_lowercase())
+        .label(label)
+        .style(ButtonStyle::Primary)
+        .disabled(is_disabled)
+        .to_owned()
+}
+
+/// Builds the four navigation buttons for the queue.
+pub fn build_nav_btns(page: usize, num_pages: usize) -> Vec<CreateActionRow> {
+    let (cant_left, cant_right) = (page < 1, page >= num_pages - 1);
+    vec![CreateActionRow::Buttons(vec![
+        build_single_nav_btn("<<", cant_left),
+        build_single_nav_btn("<", cant_left),
+        build_single_nav_btn(">", cant_right),
+        build_single_nav_btn(">>", cant_right),
+    ])]
+}
+
+/// Splits a String chunks of a given size, but tries to split on a newline if possible.
+pub fn split_string_into_chunks_newline(string: &str, chunk_size: usize) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let end = string.len();
+    let mut cur: usize = 0;
+    while cur < end {
+        let mut next = min(cur + chunk_size, end);
+        let chunk = &string[cur..next];
+        let newline_index = chunk.rfind('\n');
+        let chunk = match newline_index {
+            Some(index) => {
+                next = index + cur + 1;
+                &chunk[..index]
+            }
+            None => chunk,
+        };
+        chunks.push(chunk.to_string());
+        cur = next;
+    }
+
+    chunks
+}
+
+/// Creates a page getter for a given string, splitting it into chunks of a
+/// given size, trying to split on newlines.
+pub fn create_page_getter_newline(
+    string: &str,
+    chunk_size: usize,
+) -> impl Fn(usize) -> String + '_ {
+    let chunks = split_string_into_chunks_newline(string, chunk_size);
+    move |page| {
+        let page = page % chunks.len();
+        chunks[page].clone()
+    }
+}
+
+use ::serenity::all::ButtonStyle;
+use ::serenity::all::ChannelId;
+use ::serenity::builder::CreateActionRow;
+use ::serenity::builder::CreateButton;
+use ::serenity::builder::CreateEmbed;
+use ::serenity::builder::CreateEmbedAuthor;
+use ::serenity::builder::CreateEmbedFooter;
+use ::serenity::builder::CreateInteractionResponse;
+use ::serenity::builder::CreateInteractionResponseMessage;
+use ::serenity::builder::CreateMessage;
+use ::serenity::builder::EditMessage;
+use futures_util::StreamExt;
+use serenity::Context as SerenityContext;
+use serenity::Error as SerenityError;
+use tokio::sync::RwLock;
+
+/// Creates a paged embed with navigation buttons.
+pub async fn create_paged_embed(
+    ctx: &SerenityContext,
+    chan_id: ChannelId,
+    author: String,
+    title: String,
+    content: String,
+    page_size: usize,
+) -> Result<(), SerenityError> {
+    // let mut embed = CreateEmbed::default();
+    let page_getter = create_page_getter_newline(&content, page_size);
+    let num_pages = content.len() / page_size + 1;
+    let page: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
+
+    let reply = CreateMessage::default()
+        .embed(
+            CreateEmbed::new()
+                .title(title.clone())
+                .author(CreateEmbedAuthor::new(author.clone()))
+                .description(page_getter(0))
+                .footer(CreateEmbedFooter::new(format!("Page {}/{}", 1, num_pages))),
+        )
+        .components(build_nav_btns(0, num_pages));
+
+    let mut message = { chan_id.send_message(Arc::clone(&ctx.http), reply).await? };
+
+    let mut cib = message
+        .await_component_interactions(ctx.shard.clone())
+        .timeout(Duration::from_secs(60 * 10))
+        .stream();
+
+    while let Some(mci) = cib.next().await {
+        let btn_id = &mci.data.custom_id;
+
+        let mut page_wlock = page.write().await;
+
+        *page_wlock = match btn_id.as_str() {
+            "<<" => 0,
+            "<" => min(page_wlock.saturating_sub(1), num_pages - 1),
+            ">" => min(page_wlock.add(1), num_pages - 1),
+            ">>" => num_pages - 1,
+            _ => continue,
+        };
+
+        mci.create_response(
+            Arc::clone(&ctx.http),
+            CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::new()
+                    .embeds(vec![CreateEmbed::new()
+                        .title(title.clone())
+                        .author(CreateEmbedAuthor::new(author.clone()))
+                        .description(page_getter(*page_wlock))
+                        .footer(CreateEmbedFooter::new(format!(
+                            "Page {}/{}",
+                            *page_wlock + 1,
+                            num_pages
+                        )))])
+                    .components(build_nav_btns(*page_wlock, num_pages)),
+            ),
+        )
+        .await?;
+    }
+
+    message
+        .edit(
+            &ctx.http,
+            EditMessage::default().embed(
+                CreateEmbed::default()
+                    .description("Lryics timed out, run the command again to see them."),
+            ),
+        )
+        .await
+        .unwrap();
+
+    Ok(())
+}
+
 /// Code for printing an overview of all commands (e.g. `~help`)
 async fn help_all_commands<U, E>(
     ctx: crate::Context<'_, U, E>,
     config: HelpConfiguration<'_>,
 ) -> Result<(), serenity::Error> {
     let menu = generate_all_commands(ctx, &config).await?;
-    let reply = CreateReply::default()
-        .content(menu)
-        .ephemeral(config.ephemeral);
+    let chan_id = ctx.channel_id();
+    let author = ctx.author().tag();
+    let title = "Help".to_string();
+    let content = menu.clone();
+    let page_size = 2000;
+    create_paged_embed(
+        ctx.serenity_context(),
+        chan_id,
+        author,
+        title,
+        content,
+        page_size,
+    )
+    .await?;
+    // let reply = CreateReply::default()
+    //     //.content(menu)
+    //     .embed(embed)
+    //     .ephemeral(config.ephemeral);
 
-    ctx.send(reply).await?;
+    // ctx.send(reply).await?;
     Ok(())
 }
 
