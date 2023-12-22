@@ -471,8 +471,8 @@ pub async fn create_paged_embed<U, E>(
             _ => continue,
         };
 
-        let page = page_getter(*page_wlock);
-        let content = format!("{}\nPage {}/{}\n", page, *page_wlock + 1, num_pages);
+        let footer = format!("Page {}/{}", 1, num_pages);
+        let content = format!("```\n{}\n{}\n```", page_getter(0), &footer);
         mci.create_response(
             ctx.http(),
             CreateInteractionResponse::UpdateMessage(
