@@ -410,9 +410,9 @@ pub fn create_page_getter_newline(
 use ::serenity::all::ButtonStyle;
 use ::serenity::builder::CreateActionRow;
 use ::serenity::builder::CreateButton;
-use ::serenity::builder::CreateEmbed;
-use ::serenity::builder::CreateEmbedAuthor;
-use ::serenity::builder::CreateEmbedFooter;
+// use ::serenity::builder::CreateEmbed;
+// use ::serenity::builder::CreateEmbedAuthor;
+// use ::serenity::builder::CreateEmbedFooter;
 use ::serenity::builder::CreateInteractionResponse;
 use ::serenity::builder::CreateInteractionResponseMessage;
 use ::serenity::builder::EditMessage;
@@ -423,8 +423,8 @@ use tokio::sync::RwLock;
 /// Creates a paged embed with navigation buttons.
 pub async fn create_paged_embed<U, E>(
     ctx: crate::Context<'_, U, E>,
-    author: String,
-    title: String,
+    _author: String,
+    _title: String,
     content: String,
     page_size: usize,
 ) -> Result<(), SerenityError> {
@@ -435,14 +435,17 @@ pub async fn create_paged_embed<U, E>(
     let page: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
 
     let mut message = {
+        let footer = format!("Page {}/{}", 1, num_pages);
+        let content = page_getter(0) + "\n" + &footer + "\n";
         let create_reply = CreateReply::default()
-            .embed(
-                CreateEmbed::new()
-                    .title(title.clone())
-                    .author(CreateEmbedAuthor::new(author.clone()))
-                    .description(page_getter(0))
-                    .footer(CreateEmbedFooter::new(format!("Page {}/{}", 1, num_pages))),
-            )
+            .content(content)
+            // .embed(
+            //     CreateEmbed::new()
+            //         .title(title.clone())
+            //         .author(CreateEmbedAuthor::new(author.clone()))
+            //         .description(page_getter(0))
+            //         .footer(CreateEmbedFooter::new(format!("Page {}/{}", 1, num_pages))),
+            // )
             .components(build_nav_btns(0, num_pages));
 
         // let mut message = chan_id.send_message(Arc::clone(&ctx.http), reply).await?;
@@ -467,19 +470,18 @@ pub async fn create_paged_embed<U, E>(
             _ => continue,
         };
 
+        let page = page_getter(*page_wlock);
+        let content = format!("{}\nPage {}/{}\n", page, *page_wlock + 1, num_pages);
         mci.create_response(
             ctx.http(),
             CreateInteractionResponse::UpdateMessage(
                 CreateInteractionResponseMessage::new()
-                    .embeds(vec![CreateEmbed::new()
-                        .title(title.clone())
-                        .author(CreateEmbedAuthor::new(author.clone()))
-                        .description(page_getter(*page_wlock))
-                        .footer(CreateEmbedFooter::new(format!(
-                            "Page {}/{}",
-                            *page_wlock + 1,
-                            num_pages
-                        )))])
+                    //.embeds(vec![CreateEmbed::new()
+                    //.title(title.clone())
+                    //.author(CreateEmbedAuthor::new(author.clone()))
+                    //.description(page_getter(*page_wlock))
+                    //.footer(CreateEmbedFooter::new())])
+                    .content(content)
                     .components(build_nav_btns(*page_wlock, num_pages)),
             ),
         )
@@ -489,10 +491,7 @@ pub async fn create_paged_embed<U, E>(
     message
         .edit(
             ctx.http(),
-            EditMessage::default().embed(
-                CreateEmbed::default()
-                    .description("Lryics timed out, run the command again to see them."),
-            ),
+            EditMessage::default().content("Lryics timed out, run the command again to see them."),
         )
         .await
         .unwrap();
@@ -509,14 +508,8 @@ async fn help_all_commands<U, E>(
     let author = ctx.author().tag();
     let title = "Help".to_string();
     let content = menu.clone();
-    let page_size = 512;
+    let page_size = 1024;
     create_paged_embed(ctx, author, title, content, page_size).await
-    // let reply = CreateReply::default()
-    //     //.content(menu)
-    //     .embed(embed)
-    //     .ephemeral(config.ephemeral);
-
-    // ctx.send(reply).await?;
 }
 
 /// A help command that outputs text in a code block, groups commands by categories, and annotates
