@@ -408,7 +408,6 @@ pub fn create_page_getter_newline(
 }
 
 use ::serenity::all::ButtonStyle;
-use ::serenity::all::ChannelId;
 use ::serenity::builder::CreateActionRow;
 use ::serenity::builder::CreateButton;
 use ::serenity::builder::CreateEmbed;
@@ -416,17 +415,14 @@ use ::serenity::builder::CreateEmbedAuthor;
 use ::serenity::builder::CreateEmbedFooter;
 use ::serenity::builder::CreateInteractionResponse;
 use ::serenity::builder::CreateInteractionResponseMessage;
-use ::serenity::builder::CreateMessage;
 use ::serenity::builder::EditMessage;
 use futures_util::StreamExt;
-use serenity::Context as SerenityContext;
 use serenity::Error as SerenityError;
 use tokio::sync::RwLock;
 
 /// Creates a paged embed with navigation buttons.
-pub async fn create_paged_embed(
-    ctx: &SerenityContext,
-    chan_id: ChannelId,
+pub async fn create_paged_embed<U, E>(
+    ctx: crate::Context<'_, U, E>,
     author: String,
     title: String,
     content: String,
@@ -435,22 +431,26 @@ pub async fn create_paged_embed(
     // let mut embed = CreateEmbed::default();
     let page_getter = create_page_getter_newline(&content, page_size);
     let num_pages = content.len() / page_size + 1;
+    tracing::error!("num_pages: {}", num_pages);
     let page: Arc<RwLock<usize>> = Arc::new(RwLock::new(0));
 
-    let reply = CreateMessage::default()
-        .embed(
-            CreateEmbed::new()
-                .title(title.clone())
-                .author(CreateEmbedAuthor::new(author.clone()))
-                .description(page_getter(0))
-                .footer(CreateEmbedFooter::new(format!("Page {}/{}", 1, num_pages))),
-        )
-        .components(build_nav_btns(0, num_pages));
+    let mut message = {
+        let create_reply = CreateReply::default()
+            .embed(
+                CreateEmbed::new()
+                    .title(title.clone())
+                    .author(CreateEmbedAuthor::new(author.clone()))
+                    .description(page_getter(0))
+                    .footer(CreateEmbedFooter::new(format!("Page {}/{}", 1, num_pages))),
+            )
+            .components(build_nav_btns(0, num_pages));
 
-    let mut message = { chan_id.send_message(Arc::clone(&ctx.http), reply).await? };
+        // let mut message = chan_id.send_message(Arc::clone(&ctx.http), reply).await?;
+        ctx.send(create_reply).await?.into_message().await?
+    };
 
     let mut cib = message
-        .await_component_interactions(ctx.shard.clone())
+        .await_component_interactions(ctx)
         .timeout(Duration::from_secs(60 * 10))
         .stream();
 
@@ -468,7 +468,7 @@ pub async fn create_paged_embed(
         };
 
         mci.create_response(
-            Arc::clone(&ctx.http),
+            ctx.http(),
             CreateInteractionResponse::UpdateMessage(
                 CreateInteractionResponseMessage::new()
                     .embeds(vec![CreateEmbed::new()
@@ -488,7 +488,7 @@ pub async fn create_paged_embed(
 
     message
         .edit(
-            &ctx.http,
+            ctx.http(),
             EditMessage::default().embed(
                 CreateEmbed::default()
                     .description("Lryics timed out, run the command again to see them."),
@@ -506,20 +506,11 @@ async fn help_all_commands<U, E>(
     config: HelpConfiguration<'_>,
 ) -> Result<(), serenity::Error> {
     let menu = generate_all_commands(ctx, &config).await?;
-    let chan_id = ctx.channel_id();
     let author = ctx.author().tag();
     let title = "Help".to_string();
     let content = menu.clone();
-    let page_size = 1024;
-    create_paged_embed(
-        ctx.serenity_context(),
-        chan_id,
-        author,
-        title,
-        content,
-        page_size,
-    )
-    .await
+    let page_size = 512;
+    create_paged_embed(ctx, author, title, content, page_size).await
     // let reply = CreateReply::default()
     //     //.content(menu)
     //     .embed(embed)
