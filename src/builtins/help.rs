@@ -510,7 +510,7 @@ async fn help_all_commands<U, E>(
     let author = ctx.author().tag();
     let title = "Help".to_string();
     let content = menu.clone();
-    let page_size = 2000;
+    let page_size = 1024;
     create_paged_embed(
         ctx.serenity_context(),
         chan_id,
