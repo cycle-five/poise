@@ -306,7 +306,8 @@ async fn generate_all_commands<U, E>(
 
     let options_prefix = get_prefix_from_options(ctx).await;
 
-    let mut menu = String::from("```\n");
+    //let mut menu = String::from("```\n");
+    let mut menu = String::from("");
 
     let mut commandlist = TwoColumnList::new();
     for (category_name, commands) in categories {
@@ -346,7 +347,7 @@ async fn generate_all_commands<U, E>(
 
     menu += "\n";
     menu += config.extra_text_at_bottom;
-    menu += "\n```";
+    //menu += "\n```";
 
     Ok(menu)
 }
@@ -436,7 +437,7 @@ pub async fn create_paged_embed<U, E>(
 
     let mut message = {
         let footer = format!("Page {}/{}", 1, num_pages);
-        let content = page_getter(0) + "\n" + &footer + "\n";
+        let content = format!("```\n{}\n{}\n```", page_getter(0), &footer);
         let create_reply = CreateReply::default()
             .content(content)
             // .embed(
