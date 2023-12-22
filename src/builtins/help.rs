@@ -519,14 +519,13 @@ async fn help_all_commands<U, E>(
         content,
         page_size,
     )
-    .await?;
+    .await
     // let reply = CreateReply::default()
     //     //.content(menu)
     //     .embed(embed)
     //     .ephemeral(config.ephemeral);
 
     // ctx.send(reply).await?;
-    Ok(())
 }
 
 /// A help command that outputs text in a code block, groups commands by categories, and annotates
