@@ -40,6 +40,7 @@ async fn main() {
                 #[cfg(feature = "cache")]
                 builtins::servers(),
                 builtins::help(),
+                builtins::pretty_help(),
                 checks::shutdown(),
                 checks::modonly(),
                 checks::delete(),
@@ -77,6 +78,12 @@ async fn main() {
             ],
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("~".into()),
+                non_command_message: Some(|_, _, msg| {
+                    Box::pin(async move {
+                        println!("non command message!: {}", msg.content);
+                        Ok(())
+                    })
+                }),
                 ..Default::default()
             },
             on_error: |error| {
