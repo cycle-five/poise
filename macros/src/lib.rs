@@ -80,7 +80,7 @@ for example for command-specific help (i.e. `~help command_name`). Escape newlin
 - `broadcast_typing`: Trigger a typing indicator while command runs (prefix only)
 - `discard_spare_arguments`: Don't throw an error if the user supplies too many arguments (prefix only)
 - `ephemeral`: Make bot responses ephemeral if possible (slash only)
-    - Only poise's function, like `poise::send_reply`, respect this preference
+    - Only poise's functions, like `poise::send_reply`, respect this preference
 
 # Function parameters
 
@@ -88,8 +88,7 @@ for example for command-specific help (i.e. `~help command_name`). Escape newlin
 SlashContext, which contain a variety of context data each. Context provides some utility methods to
 access data present in both PrefixContext and SlashContext, like `author()` or `created_at()`.
 
-All following parameters are inputs to the command. You can use all types that implement
-`poise::PopArgumentAsync`, `poise::PopArgument`, `serenity::ArgumentConvert` or `std::str::FromStr`.
+All following parameters are inputs to the command. You can use all types that implement `poise::PopArgument`, `serenity::ArgumentConvert` or `std::str::FromStr`.
 You can also wrap types in `Option` or `Vec` to make them optional or variadic. In addition, there
 are multiple attributes you can use on parameters:
 
