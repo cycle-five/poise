@@ -103,7 +103,7 @@ async fn check_permissions_and_cooldown_single<'a, U, E>(
             }
         };
 
-        if !channel.is_nsfw() {
+        if !channel.guild().map(|x| x.nsfw).unwrap_or(false) {
             return Err(crate::FrameworkError::NsfwOnly { ctx });
         }
     }
