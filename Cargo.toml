@@ -13,21 +13,33 @@ tokio = { version = "1.25.1", default-features = false } # for async in general
 futures-util = { version = "0.3.13", default-features = false } # for async in general
 poise_macros = { path = "macros", version = "0.6.1" } # remember to update the version on changes!
 async-trait = { version = "0.1.48", default-features = false } # various traits
-regex = { version = "1.6.0", default-features = false, features = ["std"] } # prefix
+regex = { version = "1.6.0", default-features = false, features = [
+    "std",
+] } # prefix
 tracing = { version = "0.1.40", features = ["log"] } # warning about weird state
 derivative = "2.2.0"
 parking_lot = "0.12.1"
 
 [dependencies.serenity]
+git = "https://github.com/CycleFive/serenity.git"
+branch = "current"
 default-features = false
-features = ["builder", "client", "gateway", "model", "utils", "collector", "framework"]
-version = "0.12.0"
+features = [
+    "builder",
+    "client",
+    "gateway",
+    "model",
+    "utils",
+    "collector",
+    "framework",
+]
+version = "0.12.1"
 
 [dev-dependencies]
 # For the examples
 tokio = { version = "1.25.1", features = ["rt-multi-thread"] }
 futures = { version = "0.3.13", default-features = false }
-env_logger = "0.10.1"
+env_logger = "0.11.3"
 fluent = "0.16.0"
 intl-memoizer = "0.5.1"
 fluent-syntax = "0.11"
