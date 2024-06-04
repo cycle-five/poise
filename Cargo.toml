@@ -13,7 +13,9 @@ tokio = { version = "1.25.1", default-features = false } # for async in general
 futures-util = { version = "0.3.13", default-features = false } # for async in general
 poise_macros = { path = "macros", version = "0.6.1" } # remember to update the version on changes!
 async-trait = { version = "0.1.48", default-features = false } # various traits
-regex = { version = "1.6.0", default-features = false, features = ["std"] } # prefix
+regex = { version = "1.6.0", default-features = false, features = [
+  "std",
+] } # prefix
 tracing = { version = "0.1.40", features = ["log"] } # warning about weird state
 derivative = "2.2.0"
 parking_lot = "0.12.1"
@@ -22,7 +24,17 @@ indexmap = "2.2.6"
 
 [dependencies.serenity]
 default-features = false
-features = ["builder", "client", "gateway", "model", "utils", "collector", "framework"]
+git = "https://github.com/CycleFive/serenity"
+branch = "current"
+features = [
+  "builder",
+  "client",
+  "gateway",
+  "model",
+  "utils",
+  "collector",
+  "framework",
+]
 version = "0.12.2"
 
 [dev-dependencies]
