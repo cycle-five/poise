@@ -9,16 +9,16 @@ license = "MIT"
 repository = "https://github.com/serenity-rs/poise/"
 
 [dependencies]
-tokio = { version = "1.25.1", default-features = false } # for async in general
-futures-util = { version = "0.3.13", default-features = false } # for async in general
+tokio = { version = "1.38.0", default-features = false } # for async in general
+futures-util = { version = "0.3.30", default-features = false } # for async in general
 poise_macros = { path = "macros", version = "0.6.1" } # remember to update the version on changes!
-async-trait = { version = "0.1.48", default-features = false } # various traits
-regex = { version = "1.6.0", default-features = false, features = [
+async-trait = { version = "0.1.81", default-features = false } # various traits
+regex = { version = "1.10.5", default-features = false, features = [
   "std",
 ] } # prefix
 tracing = { version = "0.1.40", features = ["log"] } # warning about weird state
 derivative = "2.2.0"
-parking_lot = "0.12.1"
+parking_lot = "0.12.3"
 trim-in-place = "0.1.7"
 indexmap = "2.2.6"
 
@@ -39,11 +39,11 @@ version = "0.12.2"
 
 [dev-dependencies]
 # For the examples
-tokio = { version = "1.25.1", features = ["rt-multi-thread"] }
-futures = { version = "0.3.13", default-features = false }
-env_logger = "0.10.1"
-fluent = "0.16.0"
-intl-memoizer = "0.5.1"
+tokio = { version = "1.38.0", features = ["rt-multi-thread"] }
+futures = { version = "0.3.30", default-features = false }
+env_logger = "0.11.3"
+fluent = "0.16.1"
+intl-memoizer = "0.5.2"
 fluent-syntax = "0.11"
 rand = "0.8.5"
 
@@ -62,3 +62,9 @@ handle_panics = []
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "doc_nightly"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(feature, values(any()))',
+  'cfg(doc_nightly, values(any()))',
+] }

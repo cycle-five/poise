@@ -318,7 +318,7 @@ context_methods! {
                     // insert those bits into the ID
 
                     #[cfg(feature = "time")]
-                    let timestamp_millis = edited_timestamp.unix_timestamp_nanos() / 1_000_000;
+                    let timestamp_millis = edited_timestamp.timestamp_nanos_opt().unwrap_or_default() / 1_000_000;
 
                     #[cfg(not(feature = "time"))]
                     let timestamp_millis = edited_timestamp.timestamp_millis();
