@@ -51,6 +51,9 @@ pub struct CommandArgs {
 
     manual_cooldowns: Option<bool>,
 
+    install_context: Option<syn::punctuated::Punctuated<syn::Ident, syn::Token![|]>>,
+    interaction_context: Option<syn::punctuated::Punctuated<syn::Ident, syn::Token![|]>>,
+
     // In seconds
     global_cooldown: Option<u64>,
     user_cooldown: Option<u64>,
@@ -99,6 +102,8 @@ pub struct Invocation {
     default_member_permissions: syn::Expr,
     required_permissions: syn::Expr,
     required_bot_permissions: syn::Expr,
+    install_context: syn::Expr,
+    interaction_context: syn::Expr,
     args: CommandArgs,
 }
 
@@ -218,6 +223,20 @@ pub fn command(
     let required_permissions = permissions_to_tokens(&args.required_permissions);
     let required_bot_permissions = permissions_to_tokens(&args.required_bot_permissions);
 
+    let install_context = if let Some(contexts) = &args.install_context {
+        let contexts = contexts.iter();
+        syn::parse_quote! { Some(vec![ #(poise::serenity_prelude::InstallationContext::#contexts),* ]) }
+    } else {
+        syn::parse_quote! { None }
+    };
+
+    let interaction_context = if let Some(contexts) = &args.interaction_context {
+        let contexts = contexts.iter();
+        syn::parse_quote! { Some(vec![ #(poise::serenity_prelude::InteractionContext::#contexts),* ]) }
+    } else {
+        syn::parse_quote! { None }
+    };
+
     let inv = Invocation {
         parameters,
         description,
@@ -227,6 +246,8 @@ pub fn command(
         default_member_permissions,
         required_permissions,
         required_bot_permissions,
+        install_context,
+        interaction_context,
     };
 
     Ok(TokenStream::from(generate_command(inv)?))
@@ -294,6 +315,9 @@ fn generate_command(mut inv: Invocation) -> Result<proc_macro2::TokenStream, dar
     let dm_only = inv.args.dm_only;
     let nsfw_only = inv.args.nsfw_only;
 
+    let install_context = &inv.install_context;
+    let interaction_context = &inv.interaction_context;
+
     let help_text = match &inv.args.help_text_fn {
         Some(help_text_fn) => quote::quote! { Some(#help_text_fn()) },
         None => match &inv.help_text {
@@ -332,6 +356,7 @@ fn generate_command(mut inv: Invocation) -> Result<proc_macro2::TokenStream, dar
     let function_generics = &inv.function.sig.generics;
     let function_visibility = &inv.function.vis;
     let function = &inv.function;
+
     Ok(quote::quote! {
         #[allow(clippy::str_to_string)]
         #function_visibility fn #function_ident #function_generics() -> ::poise::Command<
@@ -368,6 +393,8 @@ fn generate_command(mut inv: Invocation) -> Result<proc_macro2::TokenStream, dar
                 guild_only: #guild_only,
                 dm_only: #dm_only,
                 nsfw_only: #nsfw_only,
+                install_context: #install_context,
+                interaction_context: #interaction_context,
                 checks: vec![ #( |ctx| Box::pin(#checks(ctx)) ),* ],
                 on_error: #on_error,
                 parameters: vec![ #( #parameters ),* ],

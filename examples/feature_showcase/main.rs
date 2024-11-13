@@ -18,6 +18,7 @@ mod response_with_reply;
 mod subcommand_required;
 mod subcommands;
 mod track_edits;
+mod user_apps;
 
 use poise::serenity_prelude as serenity;
 
@@ -75,6 +76,11 @@ async fn main() {
                 subcommand_required::parent_subcommand_required(),
                 track_edits::test_reuse_response(),
                 track_edits::add(),
+                user_apps::everywhere(),
+                user_apps::everywhere_context(),
+                user_apps::user_install(),
+                user_apps::not_in_guilds(),
+                user_apps::user_install_guild(),
             ],
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("~".into()),
